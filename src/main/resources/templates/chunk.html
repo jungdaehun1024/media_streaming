@@ -22,16 +22,16 @@ const sendVideoChunks = ()=>{
  
  //chunk file전송 
  const sendNextChunk = ()=>{
-	 const start = currentChunk * chunkSize;
-	 const end = Math.min(start + chunkSize , file.size);
+	 const start = currentChunk * chunkSize;  // start=> 0
+	 const end = Math.min(start + chunkSize , file.size); // end =>1MB
 	 
-	 const chunk = file.slice(start,end);
+	 const chunk = file.slice(start,end); //파일을 0~1MB잘라서 chunk에 할당
 	 
 	 //form data 형식으로 전송
-	 const formData = new FormData();
-	 formData.append("chunk", chunk, file.name);
-	 formData.append("chunkNumber", currnetChunk);
-	 formData.append("totalChunks", totalChunks);
+	 const formData = new FormData(); 
+	 formData.append("chunk", chunk, file.name);//key: chunk ,value:실제 청크 데이터,파일이름
+	 formData.append("chunkNumber", currnetChunk); // 현재 청크 번호 
+	 formData.append("totalChunks", totalChunks); // 전체 청크 수 (용량)
 	 
 	 fetch("/chunk/upload", {
 		 method: "POST",
@@ -42,12 +42,12 @@ const sendVideoChunks = ()=>{
 			 //진행률 표시
 			 resultElement.textContent = Math.round(currentChunk / totalChunk * 100) + "%"
 			 currentChunk++;
-			 if(currentChunk < totalChunks){
-				 sendNextChunk();
+			 if(currentChunk < totalChunks){ //현재 청크가 토탈청크보다 작으면 (아직 모든청크파일이 전송 X)
+				 sendNextChunk(); //sendNextChunk()실행 
 			 }
 			 //마지막 파일 까지 전송되면
 		 }else if(resp.status ===200){
-			 resp.text().then(data => resultElement.textContent = data);
+			 resp.text().then(data => resultElement.textContent = data); //컨트롤러에서 반환받은 응답을 resultElement요소에 반환
 		 }
 	 }).catch(err=>{
 		 console.error("Error");
