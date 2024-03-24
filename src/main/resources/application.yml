@@ -1,0 +1,7 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: -1  #업로드 될 수 있는 개별 파일의 최대 크기를 지정한다.
+      max-request-size: -1 #전체 요청의 최대 크기를 지정한다.(클라이언트가 서버로 전송하는 요청의 크기 제한)
+      
+        

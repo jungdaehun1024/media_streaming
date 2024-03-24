@@ -1,0 +1,43 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<title>media</title>
+</head>
+<body>
+<form method="post" enctype="multipart/form-data">
+	<input type="file" name="file">
+	<input type="text" name="desc">
+	<input type="submit">
+</form>
+<div id = "result"></div>
+</body>
+
+<script>
+const formElement = document.querySelector("form"); // 폼태그 선택
+const resultElement = document.querySelector("div") // div태그 선택
+
+//이벤트 리스너
+formElement.addEventListener("submit", async (event) => {
+	event.preventDefault(); // 폼태그의 기본 동작을 중단
+	
+	//form 데이터를 가져온다.
+	const formData = new FormData(formElement);
+	
+	// basic으로 Post요청을 보낸다. (HTTP body에 formData)
+	const response = await fetch("/basic",{
+		method:"POST",
+		body: formData
+	});
+	
+	
+	// .ok를 통해 응답이 성공했는지 여부 확인 
+	if(response.ok){
+		const result = await response.text(); // 응답이 성공적이라면 응답 데이터를 텍스트로 받아옴
+		resultElement.textContent = result; // 응답텍스트를 resultEmetent의 텍스트로 사용한다.
+	}else{
+		throw new Error(`${response.status} ${response.statusText}`);
+	}
+	
+});
+</script>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chunk</title>
+</head>
+<body>
+<input id ="video-file" type="file" name ="file">
+<button onclick="sendVideoChunks()">업로드</button>
+<div id ="result"></div>
+</body>
+
+<script>
+const sendVideoChunks = ()=>{
+ const chunkSize = 1024*1024; //1MB
+ const file = document.getElementById("video-file").files[0];// input태그에서 선택된 파일을 가져온다.
+ const resultElement = document.getElementById("result"); // div id ="result가져온다.
+ 
+ //total size계산 (소수점 이하 올림)
+ const totalChunks = Math.ceil(file.size / chunkSize); 
+ let currentChunk = 0;
+ 
+ //chunk file전송 
+ const sendNextChunk = ()=>{
+	 const start = currentChunk * chunkSize;
+	 const end = Math.min(start + chunkSize , file.size);
+	 
+	 const chunk = file.slice(start,end);
+	 
+	 //form data 형식으로 전송
+	 const formData = new FormData();
+	 formData.append("chunk", chunk, file.name);
+	 formData.append("chunkNumber", currnetChunk);
+	 formData.append("totalChunks", totalChunks);
+	 
+	 fetch("/chunk/upload", {
+		 method: "POST",
+		 body: formData
+	 }).then(resp =>{
+		 //전송 결과가 206이면 다음 파일 조각 전송 
+		 if(resp.status === 206){
+			 //진행률 표시
+			 resultElement.textContent = Math.round(currentChunk / totalChunk * 100) + "%"
+			 currentChunk++;
+			 if(currentChunk < totalChunks){
+				 sendNextChunk();
+			 }
+			 //마지막 파일 까지 전송되면
+		 }else if(resp.status ===200){
+			 resp.text().then(data => resultElement.textContent = data);
+		 }
+	 }).catch(err=>{
+		 console.error("Error");
+	 });
+ };
+ 	sendNextChunk();
+ }
+ 
+</script>
+</html>
