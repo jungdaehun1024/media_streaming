@@ -1,60 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>Chunk</title>
+    <meta charset="UTF-8">
+    <title>Title</title>
 </head>
 <body>
-<input id ="video-file" type="file" name ="file">
-<button onclick="sendVideoChunks()">업로드</button>
-<div id ="result"></div>
-</body>
 
+<input id="video-file" type="file" name="file">
+<button onclick="sendVideoChunks()">업로드</button>
+<div id="result"></div>
+
+</body>
 <script>
-const sendVideoChunks = ()=>{
- const chunkSize = 1024*1024; //1MB
- const file = document.getElementById("video-file").files[0];// input태그에서 선택된 파일을 가져온다.
- const resultElement = document.getElementById("result"); // div id ="result가져온다.
+    const sendVideoChunks = async() => {
+        const chunkSize = 1024 * 1024; // 1MB
+        const file = document.getElementById("video-file").files[0]; //선택된 파일을 가져온다.
+        const resultElement = document.getElementById("result"); 
+
+        const key =await getKey(file);
+        // total size 계산(소수점 이하 올림)
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        let currentChunk = 0; //청크파일 번호
+
+        // chunk file 전송
+        const sendNextChunk = () => {
+           
+           // chunk size 만큼 데이터 분할
+            const start = currentChunk * chunkSize; // 첫 실행때 0
+            const end = Math.min(start + chunkSize, file.size); // end : 1MB
+
+            const chunk = file.slice(start, end); // 0~1MB잘라서 chunk에 할당 
+         
+           // form data 형식으로 전송
+            const formData = new FormData();
+            formData.append("chunk", chunk, file.name);//파일 전송시에는 세번 째 인자로 파일이름을 보낼 수 있다(선택)
+            formData.append("chunkNumber", currentChunk);
+            formData.append("totalChunks", totalChunks);
+
+            fetch("/chunk/upload/"+key, {
+                method: "POST",
+                body: formData
+            }).then(resp => {
+              // 전송 결과가 206이면 다음 파일 조각 전송
+                if (resp.status === 206) {
+                 // 진행률 표시
+                    resultElement.textContent = Math.round(currentChunk / totalChunks * 100) + "%"
+                    currentChunk++;
+                    if (currentChunk < totalChunks) {//현재 청크번호가 총 토탈 청크번호보다 작다 = 아직 모든 청크파일이 전송 X
+                        sendNextChunk(); // 다시 함수 실행 
+                    }
+                // 마지막 파일까지 전송 되면 
+                } else if (resp.status === 200) {
+                    resp.text().then(data => resultElement.textContent = data);//컨트롤러에서 반환받은 응답을 resultElement에 반환
+                }
+            }).catch(err => {
+                console.error("Error uploading video chunk");
+            });
+        };
+
+        sendNextChunk();
+    }
+    
+    //업로드 키 생성
+    //현재 업로드 중인 파일인지 여부를 판단하는 키 생성 
+    const getKey = (file)=>{
+       const id = file.name + file.size + file.type; 
+       const encoded_id = new TextEncoder().encode(id); // UTF-8로 인코딩되어 이진데이터로 반환
  
- //total size계산 (소수점 이하 올림)
- const totalChunks = Math.ceil(file.size / chunkSize); 
- let currentChunk = 0;
- 
- //chunk file전송 
- const sendNextChunk = ()=>{
-	 const start = currentChunk * chunkSize;  // start=> 0
-	 const end = Math.min(start + chunkSize , file.size); // end =>1MB
-	 
-	 const chunk = file.slice(start,end); //파일을 0~1MB잘라서 chunk에 할당
-	 
-	 //form data 형식으로 전송
-	 const formData = new FormData(); 
-	 formData.append("chunk", chunk, file.name);//key: chunk ,value:실제 청크 데이터,파일이름
-	 formData.append("chunkNumber", currnetChunk); // 현재 청크 번호 
-	 formData.append("totalChunks", totalChunks); // 전체 청크 수 (용량)
-	 
-	 fetch("/chunk/upload", {
-		 method: "POST",
-		 body: formData
-	 }).then(resp =>{
-		 //전송 결과가 206이면 다음 파일 조각 전송 
-		 if(resp.status === 206){
-			 //진행률 표시
-			 resultElement.textContent = Math.round(currentChunk / totalChunk * 100) + "%"
-			 currentChunk++;
-			 if(currentChunk < totalChunks){ //현재 청크가 토탈청크보다 작으면 (아직 모든청크파일이 전송 X)
-				 sendNextChunk(); //sendNextChunk()실행 
-			 }
-			 //마지막 파일 까지 전송되면
-		 }else if(resp.status ===200){
-			 resp.text().then(data => resultElement.textContent = data); //컨트롤러에서 반환받은 응답을 resultElement요소에 반환
-		 }
-	 }).catch(err=>{
-		 console.error("Error");
-	 });
- };
- 	sendNextChunk();
- }
- 
+       return crypto.subtle.digest("SHA-256",encoded_id) // SHA-256 알고리즘으로 encoded_id 해시
+             .then(hash=>{
+                //Uint8Array로 hash를 8비트 부호없는 정수 값 배열로 나타내고 
+                // 그 배열을 map으로 순회하면서 각 인덱스에 함수를 적용한다.
+                // 각 인덱스 요소를 16진수 문자열로 변환하고 
+                // 그 16진수가 2자릿수가 될때까지 0을 채워넣는다.
+                //.join으로 하나의 문자열로만든다.(구분자 X)
+                // 위 과정의 결과로 하나의 문자열 요소를 갖는 배열이 생성된다.
+                return Array.from(new Uint8Array(hash).map(b=>b.toString(16).padStart(2,'0')).join(''));
+             }).catch(error=>{
+                console.error(error);
+             });
+       
+       const getLastChunkNumber = (key)=>{
+           return fetch("/chunk/upload/" + key, {
+               method: "GET",
+           }).then(resp => resp.text()).then(data => data);
+       }
+    }
 </script>
 </html>
