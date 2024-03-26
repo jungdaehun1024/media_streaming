@@ -18,6 +18,7 @@
         const resultElement = document.getElementById("result"); 
 
         const key =await getKey(file);
+        
         // total size 계산(소수점 이하 올림)
         const totalChunks = Math.ceil(file.size / chunkSize);
         let currentChunk = 0; //청크파일 번호
@@ -79,6 +80,7 @@
              }).catch(error=>{
                 console.error(error);
              });
+       
        
        const getLastChunkNumber = (key)=>{
            return fetch("/chunk/upload/" + key, {
